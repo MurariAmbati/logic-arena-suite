@@ -374,6 +374,178 @@
     *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
   }
 </style>
+<style id="retro-portal-ui">
+  :root {
+    --ink: #2b211d;
+    --muted: #6a5b52;
+    --panel: #ffffff;
+    --panel-strong: #f7f6f2;
+    --line: #9b9b96;
+    --accent: #8d271e;
+    --accent-2: #e9dc8d;
+    --shadow: 0 2px 8px rgba(38, 26, 20, 0.28);
+  }
+
+  html { background: #c8c8c5; }
+
+  body {
+    color: var(--ink);
+    background:
+      linear-gradient(rgba(255,255,255,0.24), rgba(255,255,255,0.24)),
+      repeating-linear-gradient(0deg, #c8c8c5 0, #c8c8c5 3px, #c2c2bf 3px, #c2c2bf 4px);
+    font-family: Georgia, "Times New Roman", serif;
+    letter-spacing: 0;
+  }
+
+  body::before { display: none; }
+
+  main {
+    width: min(calc(100% - 28px), 1080px);
+    min-height: calc(100vh - 28px);
+    margin: 14px auto;
+    padding: 0 18px 36px;
+    border: 1px solid #777773;
+    background: var(--panel-strong);
+    box-shadow: 0 2px 12px rgba(34, 26, 22, 0.25);
+  }
+
+  main > h1 {
+    margin: 0 -18px;
+    padding: 24px 25px 7px;
+    border-bottom: 1px solid #54140e;
+    color: #f7e8c2;
+    background: linear-gradient(#963329, #5d1009 68%, #3d0b07);
+    font-size: clamp(2rem, 4vw, 3.2rem);
+    font-weight: 700;
+    line-height: 1.05;
+    letter-spacing: 0.015em;
+    text-shadow: 2px 2px 0 #35100c;
+  }
+
+  main > h1::before {
+    margin-bottom: 9px;
+    color: #f5d86f;
+    content: "L  /  LOGIC ARENA";
+    font-family: "Courier New", monospace;
+    font-size: 0.64rem;
+    letter-spacing: 0.16em;
+    text-shadow: none;
+  }
+
+  main > p.small {
+    max-width: none;
+    margin: 0 -18px 18px;
+    padding: 9px 25px 18px;
+    color: #f3e4bd;
+    background: linear-gradient(#5d1009, #3d0b07);
+    font-size: clamp(0.92rem, 1.6vw, 1.08rem);
+    line-height: 1.45;
+  }
+
+  .card, main > section:not(.card) {
+    border: 1px solid #a3a39d;
+    border-radius: 0;
+    background: var(--panel);
+    box-shadow: var(--shadow);
+    backdrop-filter: none;
+  }
+
+  .card h2, .card h3, main > section:not(.card) h2, main > section:not(.card) h3 {
+    margin-top: 0;
+    padding: 7px 10px;
+    border-bottom: 3px solid #762017;
+    color: #302018;
+    background: linear-gradient(#fffce2, #e5d879);
+    font-family: Georgia, "Times New Roman", serif;
+    letter-spacing: 0;
+    text-shadow: 0 1px #fff;
+  }
+
+  .card .small, main > section:not(.card) .small { color: var(--muted); }
+
+  main > .card:first-of-type {
+    border-left: 11px solid #642019;
+    overflow: hidden;
+  }
+
+  main > .card:first-of-type::after { display: none; }
+
+  main > .card:first-of-type .row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+    gap: 8px;
+  }
+
+  button, input, select, textarea {
+    font-family: Georgia, "Times New Roman", serif;
+  }
+
+  button {
+    min-height: 38px;
+    border: 1px solid #777773;
+    border-radius: 2px;
+    color: #261b17;
+    background: linear-gradient(#ffffff, #d0d0ce);
+    box-shadow: inset 0 1px #fff, 1px 1px 0 #888883;
+    cursor: pointer;
+  }
+
+  button:hover {
+    border-color: #6c1b14;
+    background: linear-gradient(#fff7d0, #d9c86b);
+  }
+
+  button:active { box-shadow: inset 1px 1px 2px rgba(0,0,0,0.24); transform: translate(1px, 1px); }
+
+  main > .card:first-of-type .row > button {
+    min-height: 48px;
+    margin: 0;
+    border-color: #54140e;
+    border-radius: 2px;
+    color: #fff5da;
+    background: linear-gradient(#b5473b, #761b13);
+    box-shadow: inset 0 1px rgba(255,255,255,0.35), 1px 1px 0 #6a6a66;
+    font-size: 0.94rem;
+    text-shadow: 1px 1px #51110b;
+  }
+
+  main > .card:first-of-type .row > button:hover {
+    border-color: #3f0d08;
+    background: linear-gradient(#c45a4d, #8d281f);
+    box-shadow: inset 0 1px rgba(255,255,255,0.45), 1px 1px 0 #6a6a66;
+    transform: none;
+  }
+
+  input, select, textarea {
+    border: 1px solid #777773;
+    border-radius: 0;
+    color: #2b211d;
+    background: #fff;
+  }
+
+  button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+    outline: 2px solid #b23b2d;
+    outline-offset: 2px;
+  }
+
+  table { border-collapse: collapse; }
+  th { color: #f6e5b8; background: #682018; }
+  td, th { border: 1px solid #aaa9a2; padding: 7px 8px; }
+
+  @media (min-width: 820px) {
+    main { padding-left: 22px; padding-right: 22px; }
+    main > h1, main > p.small { margin-left: -22px; margin-right: -22px; }
+    main > .card:first-of-type .row { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  }
+
+  @media (max-width: 520px) {
+    main { width: calc(100% - 12px); margin: 6px auto; padding: 0 10px 24px; }
+    main > h1 { margin-left: -10px; margin-right: -10px; padding: 20px 16px 7px; }
+    main > p.small { margin-left: -10px; margin-right: -10px; padding-left: 16px; padding-right: 16px; }
+    main > .card:first-of-type .row { grid-template-columns: 1fr 1fr; gap: 6px; }
+    main > .card:first-of-type .row > button { min-height: 54px; padding: 7px 5px; font-size: 0.79rem; }
+  }
+</style>
 </head>
 <body>
   <main>
