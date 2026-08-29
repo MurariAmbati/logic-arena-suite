@@ -14440,6 +14440,21 @@ window.addEventListener('DOMContentLoaded', bootstrap);
 
   const toNumber = (value, fallback = 0) => Number.isFinite(Number(value)) ? Number(value) : fallback;
 
+  const getFunction = (key) => {
+    try {
+      const value = window[key];
+      return typeof value === 'function' ? value : undefined;
+    } catch (_) {
+      return undefined;
+    }
+  };
+
+  const setGlobalFunction = (key, fn) => {
+    try {
+      if (typeof fn === 'function') window[key] = fn;
+    } catch (_) {}
+  };
+
   const SINGULARITY_FAMILIES = [
     { id: 'lab-singularity-commitment-layers', label: 'Lab: Singularity Commitment Layers' },
     { id: 'lab-singularity-temporal-rewrite', label: 'Lab: Temporal Rewrite Pressure' },
