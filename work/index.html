@@ -1061,7 +1061,7 @@ function xpForCorrectAnswer(game, mode) {
   const base = XP_REWARDS[game.difficulty] || XP_REWARDS.medium;
   const streakBonus = game.streakSafe ? 8 : 0;
   const modeBonus = mode.perfectBase >= 7 ? 6 : 0;
-  const focus = document.getElementById('focusFilter').value === 'adaptive' ? 4 : 0;
+  const focus = document.getElementById('focusFilter')?.value === 'adaptive' ? 4 : 0;
   return base + streakBonus + modeBonus + focus;
 }
 
@@ -5423,7 +5423,7 @@ function familyAdaptiveSignals(category) {
   const antiRepeatPenalty = clamp(1 - familyRecencyPenalty(c), 0.01, 0.72);
   const antiRepeatPressure = clamp(antiRepeatPenalty + saturation * 0.25, 0.02, 1);
   const streakPressure = clamp((state.streakBest - 2) * 0.018, -0.16, 0.24);
-  const focusAdaptive = document.getElementById('focusFilter').value === 'adaptive' ? 0.09 : 0;
+  const focusAdaptive = document.getElementById('focusFilter')?.value === 'adaptive' ? 0.09 : 0;
   const metrics = state.metrics || {};
   const speedPenalty = Number.isFinite(metrics.speedPenalty) ? metrics.speedPenalty : 0;
   const streakAccuracy = Number.isFinite(metrics.streakAccuracy) ? metrics.streakAccuracy : accuracy;
@@ -7222,8 +7222,14 @@ function buildDecisionGame(meta) {
   const mutatedMeta = applyDecisionMutation(meta);
   const payload = mutatedMeta || meta;
   const ev = payload.ev || meta.ev || {};
-  const values = Array.isArray(ev.values) ? ev.values.slice() : [];
-  const stdev = Array.isArray(ev.stdev) ? ev.stdev.slice() : [0, 0, 0, 0];
+  const optionCount = Array.isArray(payload.options) && payload.options.length ? payload.options.length : 4;
+  const rawValues = Array.isArray(ev.values) ? ev.values.slice() : [];
+  const values = rawValues.length
+    ? rawValues
+    : Array.from({ length: optionCount }, (_, index) => 1 - index * 0.01);
+  const stdev = Array.isArray(ev.stdev) && ev.stdev.length
+    ? ev.stdev.slice()
+    : Array.from({ length: values.length }, () => 1);
   const pair = topTwo(values);
   const gap = round2(pair.winner.value - pair.runner.value);
   const avgUncertainty = round2((stdev[pair.winner.index] + stdev[pair.runner.index]) / 2);
@@ -10371,6 +10377,7 @@ function generateMissingFamilyGames(rng, count, startId, category) {
       explanation,
       featureSignature: signature,
       difficultyJitter: clamp(1 + normalNoise(rng, 0.12), 0.86, 1.26),
+      ev,
       generatedFrom: 'adaptive-generic-family'
     }));
   }
@@ -14454,6 +14461,11 @@ window.addEventListener('DOMContentLoaded', bootstrap);
       if (typeof fn === 'function') window[key] = fn;
     } catch (_) {}
   };
+
+  try {
+    window.getFunction = getFunction;
+    window.setGlobalFunction = setGlobalFunction;
+  } catch (_) {}
 
   const SINGULARITY_FAMILIES = [
     { id: 'lab-singularity-commitment-layers', label: 'Lab: Singularity Commitment Layers' },
