@@ -545,6 +545,36 @@
     main > .card:first-of-type .row { grid-template-columns: 1fr 1fr; gap: 6px; }
     main > .card:first-of-type .row > button { min-height: 54px; padding: 7px 5px; font-size: 0.79rem; }
   }
+
+  .quick-start-panel {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 0 0 12px;
+    padding: 10px;
+    border: 1px solid #b7b6ab;
+    background: #f7f2cf;
+  }
+
+  .quick-start-panel .queue-start {
+    min-width: 220px;
+    border-color: #54140e;
+    color: #fff5da;
+    background: linear-gradient(#b5473b, #761b13);
+    font-weight: 700;
+    text-shadow: 1px 1px #51110b;
+  }
+
+  .quick-start-panel .queue-start:hover { color: #fff; background: linear-gradient(#c45a4d, #8d281f); }
+
+  .queue-copy { color: #5a473e; font-size: 0.92rem; line-height: 1.35; }
+  .queue-copy strong { color: #6c1b14; }
+
+  @media (max-width: 620px) {
+    .quick-start-panel { align-items: stretch; flex-direction: column; }
+    .quick-start-panel .queue-start { width: 100%; }
+  }
 </style>
 </head>
 <body>
@@ -554,6 +584,10 @@
     <section class="card">
       <h2>Start your phone-first training</h2>
       <p class="small">Choose a lane and launch a game mode that matches your thinking style:</p>
+      <div class="quick-start-panel" role="group" aria-label="Quick start">
+        <button class="queue-start" type="button" onclick="startRandom()">Play next challenge</button>
+        <span class="queue-copy"><strong>Queue:</strong> no setup required. Start here, then use the lane buttons when you want a specific training style.</span>
+      </div>
       <div class="row">
         <button onclick="startReasoningLane()">Reasoning Lane</button>
         <button onclick="startGameTheoryLane()">Game Theory Lab</button>
@@ -4435,8 +4469,8 @@ function applyDecisionMutation(meta) {
   out.scenarioCount = Math.max(560, Math.round((out.scenarioCount || 1) * scenarioScale));
   const corpus = corpusProfile();
   const profileNoise = clamp((corpus.noiseScale || 1) - 1, -0.25, 0.55);
-  const focus = document.getElementById('focusFilter')?.value || 'all';
-  const difficultyBias = focus === 'safe' ? -0.06 : focus === 'adaptive' ? 0.12 : 0;
+  const difficultyFocus = document.getElementById('focusFilter')?.value || 'all';
+  const difficultyBias = difficultyFocus === 'safe' ? -0.06 : difficultyFocus === 'adaptive' ? 0.12 : 0;
   out.difficultyJitter = clamp(
     1 + (mutation.hardBonus || 0) * 0.14 + profileNoise + difficultyBias + (mutation.antiRepeatWeight || 0) * 0.08 + repeatWindow * 0.2 + antiRepeatMod * 0.08 + normalNoise(rng, 0.08) +
       (laneCombatFocus ? 0.08 : 0),
@@ -4607,7 +4641,7 @@ function buildFeatureProfilePacket(category, seed, difficulty = 'medium') {
     weight: clamp(
       (packet.weight || 1) * (1 + (challenge - 0.95) * 0.18 + modePressure * 0.26 + missionPressure * 0.6 + saturation * 0.16 +
         (packet.signalChaos - 1) * 0.22 + (packet.antiRepeatBias - 1) * antiRepeatDemand * 0.28 + (lanePacketPressure - 1) * 1.08 +
-        (combatLanePriority ? 0.08 : 0) + (laneCategoryBoost - 1) * 0.45 + (1 - (shift?.uncertaintyBias || 1)) * 0.1,
+        (combatLanePriority ? 0.08 : 0) + (laneCategoryBoost - 1) * 0.45 + (1 - (shift?.uncertaintyBias || 1)) * 0.1),
       0.45,
       2.8
     )
@@ -14101,9 +14135,9 @@ window.addEventListener('DOMContentLoaded', bootstrap);
     const laneModel = detectLaneModel();
     const seed = `${category}|${laneModel.lane}|${window.state && window.state.total ? window.state.total : 0}|${window.state && window.state.streakPerfect ? window.state.streakPerfect : 0}|${context.seed || 'base'}`;
     const rng = stableRng(seed);
-    const baseProfile = Object.assign({}, familyProfiler(category, context));
+    const profileBase = Object.assign({}, familyProfiler(category, context));
     const selectedTemplate = selectFeatureTemplate(category, laneModel, seed);
-    const profile = Object.assign({}, baseProfile, selectedTemplate || {});
+    const profile = Object.assign({}, profileBase, selectedTemplate || {});
     const health = familyHealth(category);
     const missPressure = (1 - health.accuracy);
 
@@ -15221,7 +15255,7 @@ window.addEventListener('DOMContentLoaded', bootstrap);
     };
     const chooseWeighted = (items, scoreMap, seed) => {
       if (!Array.isArray(items) || items.length === 0) return null;
-      if (!scoreMap) return items[Math.floor(toSafeNum(stableRngFromText(seed)(), 0) * items.length];
+      if (!scoreMap) return items[Math.floor(toSafeNum(stableRngFromText(seed)(), 0) * items.length)];
       let total = 0;
       for (const key of items) {
         total += Math.max(0.0001, toSafeNum(scoreMap[key], 1));
@@ -15600,7 +15634,7 @@ window.addEventListener('DOMContentLoaded', bootstrap);
       game.__arenaEliteSignal = signal;
       game.__eliteFamilyPressureBoost = toSafeNum(signal.pressure && signal.pressure[game.category], 1);
       game.__arenaEliteVariant = {
-        antiRepeatLock: Math.max(3, Math.floor((signal.antiRepeatWindow || 4) * (0.65 + rng() * 0.5)),
+        antiRepeatLock: Math.max(3, Math.floor((signal.antiRepeatWindow || 4) * (0.65 + rng() * 0.5))),
         mutationMode: rng() > 0.66 ? 'high-variance' : rng() > 0.33 ? 'lane-shift' : 'deep-replay',
         antiRepeatWindow: signal.antiRepeatWindow,
         signalSeed: signal.seed || 'elite'

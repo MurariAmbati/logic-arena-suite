@@ -1,4 +1,4 @@
-const CACHE_NAME = 'logic-arena-cache-v10';
+const CACHE_NAME = 'logic-arena-cache-v11';
 const CACHE_PREFIX = 'logic-arena-cache-';
 const OFFLINE_ASSETS = [
   './',
