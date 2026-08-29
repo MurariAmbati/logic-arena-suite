@@ -568,6 +568,8 @@
 
   .quick-start-panel .queue-start:hover { color: #fff; background: linear-gradient(#c45a4d, #8d281f); }
 
+  .quick-start-panel .queue-catalog { min-width: 180px; }
+
   .queue-copy { color: #5a473e; font-size: 0.92rem; line-height: 1.35; }
   .queue-copy strong { color: #6c1b14; }
 
@@ -586,6 +588,7 @@
       <p class="small">Choose a lane and launch a game mode that matches your thinking style:</p>
       <div class="quick-start-panel" role="group" aria-label="Quick start">
         <button class="queue-start" type="button" onclick="startRandom()">Play next challenge</button>
+        <button class="queue-catalog" type="button" onclick="loadFullCatalog()">Open full catalog</button>
         <span class="queue-copy"><strong>Queue:</strong> no setup required. Start here, then use the lane buttons when you want a specific training style.</span>
       </div>
       <div class="row">
@@ -4840,7 +4843,7 @@ function startDailyMission() {
     }
   }
   applyFilters();
-  buildMeta();
+  refreshArenaMeta();
   goToCatalog();
   document.getElementById('accessibilityHint').textContent = `Daily mission started: ${coach.title}.`;
 }
@@ -7222,9 +7225,9 @@ function buildDecisionGame(meta) {
   const mutatedMeta = applyDecisionMutation(meta);
   const payload = mutatedMeta || meta;
   const ev = payload.ev || meta.ev || {};
-  const optionCount = Array.isArray(payload.options) && payload.options.length ? payload.options.length : 4;
+  const optionCount = Array.isArray(payload.options) && payload.options.length ? Math.max(2, payload.options.length) : 4;
   const rawValues = Array.isArray(ev.values) ? ev.values.slice() : [];
-  const values = rawValues.length
+  const values = rawValues.length >= 2
     ? rawValues
     : Array.from({ length: optionCount }, (_, index) => 1 - index * 0.01);
   const stdev = Array.isArray(ev.stdev) && ev.stdev.length
@@ -10384,11 +10387,113 @@ function generateMissingFamilyGames(rng, count, startId, category) {
   return out;
 }
 
-function generateGames(seed) {
+function buildFallbackChallenges(category, count, startId) {
+  const label = String(category || 'strategy-family')
+    .replace(/[-_]+/g, ' ')
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+  const options = ['Preserve optionality', 'Gather more evidence', 'Commit to the bold line', 'Create a fallback branch'];
+  return Array.from({ length: count }, (_, index) => {
+    const answer = index % options.length;
+    const rawEV = options.map((_, optionIndex) => optionIndex === answer ? 8 : 4 - optionIndex * 0.4);
+    return {
+      id: `fallback-${category || 'strategy'}-${startId + index + 1}`,
+      category: category || 'strategy-family',
+      difficulty: index % 3 === 0 ? 'medium' : 'hard',
+      scenarioCount: 1200 + index * 11,
+      title: `${label} Quick Drill ${index + 1}`,
+      prompt: `A ${label.toLowerCase()} decision is under uncertainty. Choose the move that preserves future options while improving the quality of your next decision.`,
+      options,
+      answer,
+      explanation: 'Fallback challenge created so this training family remains playable while its generator is repaired.',
+      featureMutation: 'safe-fallback',
+      featureMutationLabel: 'Safe fallback',
+      featureSignature: 'fallback-optionality',
+      rawEV,
+      evStdev: options.map(() => 1.1),
+      second: { index: (answer + 1) % options.length, value: rawEV[(answer + 1) % options.length] },
+      avgUncertainty: 1.1,
+      complexity: 1.2,
+      uncertaintyNeed: 1,
+      streakNeed: 0.8,
+      qualityScore: 0.58,
+      margin: 4,
+      streakSafe: false,
+      generatedFrom: 'fallback-generator'
+    };
+  });
+}
+
+function buildQuickStartGames(seed) {
+  const plans = [
+    ['bayes-inference', 'Bayesian Evidence', 'A new signal changes the odds. Choose the move that preserves the most future information.'],
+    ['auction-intelligence', 'Auction Intelligence', 'Two rivals are bidding aggressively. Choose the move that protects value without revealing your full hand.'],
+    ['resilient-routing', 'Resilient Routing', 'A critical route may fail. Choose a response that keeps a second viable path open.'],
+    ['bayes-negotiation', 'Bayes Negotiation', 'A counterparty sends an ambiguous offer. Choose the response that improves leverage without burning trust.'],
+    ['diagnosis-planning', 'Diagnosis Planning', 'Evidence is incomplete and time is limited. Choose the next test with the highest decision value.'],
+    ['portfolio-risk', 'Portfolio Risk', 'A shock is possible but not certain. Choose the allocation that survives the widest range of outcomes.'],
+    ['signaling-trust', 'Signaling and Trust', 'A partner must decide whether to trust your signal. Choose the commitment that remains credible if plans change.'],
+    ['mechanism-design', 'Mechanism Design', 'Participants will optimize around the rules. Choose the rule that keeps incentives aligned under pressure.']
+  ];
+  const options = ['Preserve optionality', 'Gather more evidence', 'Commit to the bold line', 'Create a fallback branch'];
+  return plans.map(([category, title, prompt], index) => {
+    const answer = index % options.length;
+    const rawEV = options.map((_, optionIndex) => optionIndex === answer ? 8 : 4 - optionIndex * 0.4);
+    return {
+      id: `quick-${seed}-${index + 1}`,
+      category,
+      difficulty: index % 3 === 0 ? 'easy' : index % 3 === 1 ? 'medium' : 'hard',
+      scenarioCount: 900 + index * 37,
+      title: `${title} / Quick Queue ${index + 1}`,
+      prompt,
+      options,
+      answer,
+      explanation: 'Quick queue challenge: compare immediate value against the quality of your next decision and the strength of your fallback.',
+      featureMutation: 'quick-queue',
+      featureMutationLabel: 'Quick queue',
+      featureSignature: 'optionality-and-information',
+      rawEV,
+      evStdev: options.map(() => 1.1),
+      second: { index: (answer + 1) % options.length, value: rawEV[(answer + 1) % options.length] },
+      avgUncertainty: 1.1,
+      complexity: 1.2,
+      uncertaintyNeed: 1,
+      streakNeed: 0.8,
+      qualityScore: 0.58,
+      margin: 4,
+      streakSafe: false,
+      generatedFrom: 'quick-start-queue'
+    };
+  });
+}
+
+function generateGames(seed, options = {}) {
   state.seed = seed || (Date.now() & 0x7fffffff);
   state.rng = mulberry32(state.seed);
   state.sessionEpoch = (state.sessionEpoch || 0) + 1;
   setSessionFeatureShift('catalog', state.seed);
+
+  if (options.fastStart) {
+    state.fastStart = true;
+    state.corpusProfile = { family: {}, blueprint: CORPUS_BLUEPRINTS[0] };
+    state.training = { builtAt: new Date().toISOString(), runtimeAdvancedBlueprints: [], runtimeFamilyLabels: {} };
+    state.games = buildQuickStartGames(state.seed);
+    state.solved = {};
+    state.currentGame = null;
+    state.total = 0;
+    state.correct = 0;
+    state.streakAny = 0;
+    state.streakPerfect = 0;
+    state.streakBest = 0;
+    state.perfectSessions = 0;
+    state.recentCategories = [];
+    state.streakHistory = [];
+    clearPerfectRunState();
+    state.score = 0;
+    state.generationWarnings = 0;
+    return;
+  }
+
+  state.fastStart = false;
   state.corpusProfile = buildCorpusProfile(state.rng);
   state.training = buildTrainingCorpus(state.seed);
 
@@ -10492,11 +10597,19 @@ function generateGames(seed) {
     pass += 1;
   }
   shuffleInPlace(quotas, rng);
+  let generationWarnings = 0;
   for (const item of quotas) {
     if (!item || !item.fn || !item.count || !Number.isFinite(item.count)) continue;
     state.activeScenarioCategory = item.category || state.activeScenarioCategory;
-    const batch = item.fn(rng, item.count, start);
-    take(batch, item.count);
+    try {
+      const batch = item.fn(rng, item.count, start);
+      if (!Array.isArray(batch) || batch.length === 0) throw new Error('empty challenge batch');
+      take(batch, item.count);
+    } catch (error) {
+      generationWarnings += 1;
+      take(buildFallbackChallenges(item.category, item.count, start), item.count);
+      console.warn(`Fallback challenges used for ${item.category || 'unknown family'}: ${error?.message || 'generator failed'}`);
+    }
   }
 
   shuffleInPlace(all, rng);
@@ -10513,6 +10626,7 @@ function generateGames(seed) {
   state.streakHistory = [];
   clearPerfectRunState();
   state.score = 0;
+  state.generationWarnings = generationWarnings;
 }
 
 function buildCategoryOptions() {
@@ -10623,7 +10737,7 @@ function renderCatalog() {
   pager.innerHTML = `Showing ${labelStart}-${end} of ${state.filtered.length} games • page ${state.page + 1}/${pages}<br/>${controls}`;
   document.getElementById('filterHint').textContent = `Suite ${suiteLabel}: ${suiteText}. Focus: ${document.getElementById('focusFilter').value} • filtered ${state.filtered.length} of ${state.games.length}`;
 
-  buildMeta();
+  refreshArenaMeta();
 }
 
 function prevPage() {
@@ -10821,6 +10935,25 @@ function buildMeta() {
   } else {
     document.getElementById('accessibilityHint').textContent = 'Install available: choose Install app.';
   }
+}
+
+function updateQuickMeta() {
+  const trainMeta = document.getElementById('trainMeta');
+  const stats = document.getElementById('stats');
+  if (trainMeta) {
+    trainMeta.textContent = state.currentGame
+      ? `Quick queue active: ${state.currentGame.title}. Choose the strongest next move.`
+      : `Quick queue ready: ${state.games.length} challenge starters loaded.`;
+  }
+  if (stats) stats.textContent = `Score ${state.score} • ${state.total} answered • ${state.correct} correct`;
+}
+
+function refreshArenaMeta() {
+  if (state.fastStart) {
+    updateQuickMeta();
+    return;
+  }
+  buildMeta();
 }
 
 function warmUpTargetText(target) {
@@ -11043,7 +11176,14 @@ function goToCatalog() {
 function openGame(game) {
   state.sessionOpenIndex = (state.sessionOpenIndex || 0) + 1;
   const shouldMutate = shouldMutateForSession();
-  const preparedGame = shouldMutate ? buildSessionChallenge(game) : game;
+  let preparedGame = game;
+  if (shouldMutate) {
+    try {
+      preparedGame = buildSessionChallenge(game) || game;
+    } catch (error) {
+      console.warn(`Session mutation skipped for ${game?.category || 'unknown family'}: ${error?.message || 'mutation failed'}`);
+    }
+  }
   state.currentGame = preparedGame;
   state.__openTs = Date.now();
   const btns = document.getElementById('choices');
@@ -11072,7 +11212,7 @@ function openGame(game) {
 
   document.getElementById('catalogView').style.display = 'none';
   document.getElementById('gameView').style.display = 'block';
-  buildMeta();
+  refreshArenaMeta();
 }
 
 function phonePulse(success) {
@@ -11277,7 +11417,7 @@ function answer(index) {
   resultWrap.style.display = 'block';
   nextBtn.style.display = 'inline-block';
   saveProgress();
-  buildMeta();
+  refreshArenaMeta();
   document.getElementById('streakGuideText').textContent = state.showCurriculum ? buildStreakCurriculum() : buildInGameGuide(game);
 }
 
@@ -11556,18 +11696,18 @@ function startPerfectRun(lane = 'catalog', options = {}) {
 
 function toggleHints() {
   state.showHint = !state.showHint;
-  buildMeta();
+  refreshArenaMeta();
 }
 
 function toggleStreakGuide() {
   state.showGuide = !state.showGuide;
-  buildMeta();
+  refreshArenaMeta();
   if (state.currentGame) document.getElementById('streakGuideText').textContent = buildInGameGuide(state.currentGame);
 }
 
 function toggleCurriculumMode() {
   state.showCurriculum = !state.showCurriculum;
-  buildMeta();
+  refreshArenaMeta();
   if (state.currentGame) {
     const curriculum = buildStreakCurriculum();
     document.getElementById('streakGuideText').textContent = curriculum;
@@ -11598,7 +11738,7 @@ function setTrainingMode(mode) {
   state.trainingMode = nextMode;
   const select = document.getElementById('trainingMode');
   if (select && select.value !== nextMode) select.value = nextMode;
-  generateGames(state.seed);
+  generateGames(state.seed, { fastStart: true });
   clearPerfectRunState();
   state.solved = previousProgress.solved;
   state.total = previousProgress.total;
@@ -11619,7 +11759,7 @@ function setTrainingMode(mode) {
   recomputePerformanceMetrics();
   buildCategoryOptions();
   applyFilters();
-  buildMeta();
+  refreshArenaMeta();
   saveProgress(true);
 }
 
@@ -11659,9 +11799,22 @@ function resetProgress() {
   state.perfectSessions = 0;
   state.cognitiveCoach = defaultCognitiveCoach();
   recomputePerformanceMetrics();
-  buildMeta();
+  refreshArenaMeta();
   applyFilters();
   saveProgress(true);
+}
+
+function loadFullCatalog() {
+  const hint = document.getElementById('accessibilityHint');
+  if (hint) hint.textContent = 'Loading the full challenge catalog. Your current progress will be preserved.';
+  window.setTimeout(() => {
+    generateGames(state.seed, { fastStart: false });
+    buildCategoryOptions();
+    applyFilters();
+    buildMeta();
+    goToCatalog();
+    saveProgress(true);
+  }, 0);
 }
 
 function saveProgress(hardReset = false) {
@@ -11853,8 +12006,9 @@ function injectAdvancedFamilies(seed) {
 }
 
 const _coreGenerateGames = generateGames;
-generateGames = function(seed) {
-  _coreGenerateGames(seed);
+generateGames = function(seed, options = {}) {
+  _coreGenerateGames(seed, options);
+  if (options.fastStart) return;
   hardenCorpusGames(state.games, state.rng);
   injectAdvancedFamilies(seed);
   hardenCorpusGames(state.games, state.rng);
@@ -12484,8 +12638,9 @@ buildFeatureProfilePacket = function(category, seed, difficulty = 'medium') {
 };
 
 const _arenaBaseGenerateGames = generateGames;
-generateGames = function(seed) {
-  const games = _arenaBaseGenerateGames(seed);
+generateGames = function(seed, options = {}) {
+  const games = _arenaBaseGenerateGames(seed, options);
+  if (options.fastStart) return state.games;
   const lane = activePerfectLane();
   const base = (activeTrainingMode().perfectBase || 0) + (lane === 'monolith' ? 2 : 0);
   return randomizeCorpusGames(games, `${seed || ''}|${base}`);
@@ -13408,8 +13563,9 @@ buildInGameGuide = function(game = state.currentGame) {
 
   const baseGenerateGames = typeof generateGames === 'function' ? generateGames : null;
   if (baseGenerateGames && !baseGenerateGames.__arenaDataDrivenPatch) {
-    generateGames = function(seed) {
-      const result = baseGenerateGames(seed);
+    generateGames = function(seed, options = {}) {
+      const result = baseGenerateGames(seed, options);
+      if (options.fastStart) return result;
       ensureCorpusFamilies();
       return result;
     };
@@ -13517,7 +13673,7 @@ function bootstrap() {
   const savedMode = saved && TRAINING_MODES[saved.trainingMode] ? saved.trainingMode : 'standard';
   state.trainingMode = savedMode;
   if (saved && saved.seed) {
-    generateGames(saved.seed);
+    generateGames(saved.seed, { fastStart: true });
     state.showHint = saved.showHint !== false;
     state.showGuide = saved.showGuide !== false;
     state.showCurriculum = saved.showCurriculum === true;
@@ -13546,12 +13702,26 @@ function bootstrap() {
     state.__perfectRunStarts = Number.isFinite(saved.__perfectRunStarts) ? saved.__perfectRunStarts : 0;
     state.cognitiveCoach = normalizeCognitiveCoach(saved.cognitiveCoach);
   } else {
-    generateGames(Date.now() & 0x7fffffff);
+    generateGames(Date.now() & 0x7fffffff, { fastStart: true });
     state.cognitiveCoach = defaultCognitiveCoach();
   }
   clearPerfectRunState();
   recomputePerformanceMetrics();
   ensureCognitiveCoach();
+
+  if (state.fastStart) {
+    buildCategoryOptions();
+    buildSuiteOptions();
+    applyFilters();
+    document.getElementById('trainMeta').textContent = `Quick queue ready: ${state.games.length} challenge starters loaded. Open the full catalog only when you want deeper browsing.`;
+    document.getElementById('stats').textContent = 'Ready to play. Your progress will be saved after the first answer.';
+    document.getElementById('accessibilityHint').textContent = 'Choose Play next challenge to begin. Every challenge has a visible answer set and a next-step button.';
+    updateInstallButton();
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./service-worker.js').catch(() => {});
+    }
+    return;
+  }
 
   buildCategoryOptions();
   buildSuiteOptions();
@@ -14378,7 +14548,9 @@ window.addEventListener('DOMContentLoaded', bootstrap);
       if (streakTextEl) streakTextEl.textContent = `${formatPerfectStreakProtocol()}`;
       if (missionPlanEl) missionPlanEl.textContent = `Streak strategy: start with 1 forced safe solve, then re-enter your target family only after anti-repeat condition passes.`;
       if (coachEl) coachEl.textContent = `Coach focus: anti-repeat, rollback checks, opponent modeling.`;
-      if (playbookEl) playbookEl.textContent = baseBuildPlaybookText();
+      if (playbookEl) playbookEl.textContent = typeof baseBuildPlaybookText === 'function'
+        ? baseBuildPlaybookText()
+        : 'Playbook ready: compare the top two choices, preserve one fallback, then commit once.';
       return out;
     };
     patchedBuildMeta.__arenaAdvancedHardPatch = true;
